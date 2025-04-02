@@ -158,10 +158,16 @@ resource "libvirt_domain" "my_machine" {
 
 Some extra arguments are also provided for using UEFI images:
 
-* `firmware` - (Optional) The UEFI rom images for exercising UEFI secure boot in a qemu
-environment. Users should usually specify one of the standard _Open Virtual Machine
-Firmware_ (_OVMF_) images available for their distributions. The file will be opened
-read-only.
+* `firmware_config` - (Optional) A block defining detailed configuration for the firmware. The following arguments are supported:
+  * `path` - (Required) Path to the firmware file. Users should usually specify one of the standard _Open Virtual Machine Firmware_ (_OVMF_) images available for their distributions.
+  * `readonly` - (Optional) Whether the firmware should be read-only. Default is `true`.
+  * `type` - (Optional) Type of firmware. Default is `pflash`, which is typically used for UEFI.
+  * `secure` - (Optional) Enable secure boot. Default is `false`.
+
+* `firmware` - (Optional, Deprecated) The UEFI rom images for exercising UEFI secure boot in a qemu
+environment. Use `firmware_config` block instead for more configuration options. Users should usually 
+specify one of the standard _Open Virtual Machine Firmware_ (_OVMF_) images available for their 
+distributions. The file will be opened read-only.
 * `nvram` - (Optional) this block allows specifying the following attributes related to the _nvram_:
   * `file` - path to the file backing the NVRAM store for non-volatile variables. When provided,
   this file must be writable and specific to this domain, as it will be updated when running the
@@ -200,6 +206,33 @@ look like this:
 ```hcl
 resource "libvirt_domain" "my_machine" {
   name     = "my_machine"
+  
+  # New recommended way to configure firmware
+  firmware_config {
+    path     = "/usr/share/qemu/ovmf-x86_64-code.bin"
+    readonly = true
+    type     = "pflash"
+    secure   = false
+  }
+  
+  nvram {
+    file = "/usr/local/share/qemu/custom-vars.bin"
+  }
+  memory = "2048"
+
+  disk {
+    volume_id = libvirt_volume.volume.id
+  }
+  ...
+}
+
+```
+
+Or using the legacy method (deprecated):
+
+```hcl
+resource "libvirt_domain" "my_machine" {
+  name     = "my_machine"
   firmware = "/usr/share/qemu/ovmf-x86_64-code.bin"
   nvram {
     file = "/usr/local/share/qemu/custom-vars.bin"
@@ -220,7 +253,13 @@ coming from a template, the domain definition should look like this:
 ```hcl
 resource "libvirt_domain" "my_machine" {
   name     = "my_machine"
-  firmware = "/usr/share/qemu/ovmf-x86_64-code.bin"
+  
+  firmware_config {
+    path     = "/usr/share/qemu/ovmf-x86_64-code.bin"
+    readonly = true
+    type     = "pflash"
+  }
+  
   nvram {
     file = "/usr/local/share/qemu/custom-vars.bin"
     template = "/usr/local/share/qemu/template-vars.bin"

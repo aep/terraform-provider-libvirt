@@ -72,9 +72,43 @@ func resourceLibvirtDomain() *schema.Resource {
 				ForceNew: true,
 			},
 			"firmware": {
-				Type:     schema.TypeString,
+				Type:       schema.TypeString,
+				Optional:   true,
+				ForceNew:   true,
+				Deprecated: "Use the 'firmware_config' block instead",
+			},
+			"firmware_config": {
+				Type:     schema.TypeList,
 				Optional: true,
 				ForceNew: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"path": {
+							Type:     schema.TypeString,
+							Required: true,
+							ForceNew: true,
+						},
+						"readonly": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default:  true,
+							ForceNew: true,
+						},
+						"type": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "pflash",
+							ForceNew: true,
+						},
+						"secure": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default:  false,
+							ForceNew: true,
+						},
+					},
+				},
 			},
 			"type": {
 				Type:     schema.TypeString,
@@ -1151,7 +1185,17 @@ func resourceLibvirtDomainRead(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	if domainDef.OS.Loader != nil {
+		// Set the old firmware string for backwards compatibility
 		d.Set("firmware", domainDef.OS.Loader.Path)
+		
+		// Set the new firmware_config block
+		firmwareConfig := map[string]interface{}{
+			"path": domainDef.OS.Loader.Path,
+			"type": domainDef.OS.Loader.Type,
+			"readonly": domainDef.OS.Loader.Readonly == "yes",
+			"secure": domainDef.OS.Loader.Secure == "yes",
+		}
+		d.Set("firmware_config", []map[string]interface{}{firmwareConfig})
 	}
 
 	if domainDef.OS.NVRam != nil {
